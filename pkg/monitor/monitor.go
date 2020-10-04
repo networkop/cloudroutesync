@@ -58,10 +58,10 @@ func parseCurrent() (map[string]net.IP, error) {
 		parts := strings.Split(routeStr, " ")
 		prefixStr, nhStr := parts[0], parts[2]
 
-		// We don't want to inject default
-		//if prefixStr == "default" {
-		//	prefixStr = "0.0.0.0/0"
-		//}
+		// We don't want to inject default or
+		if prefixStr == "default" || strings.HasPrefix(prefixStr, "169") {
+			continue
+		}
 
 		_, prefix, err := net.ParseCIDR(prefixStr)
 		if err != nil {

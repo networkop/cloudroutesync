@@ -48,6 +48,7 @@ type AzureClient struct {
 	azureSubnet     network.Subnet
 	azureRouteTable network.RouteTable
 	azureVnetName   *string
+	location        *string
 }
 
 // NewAzureClient builds new Azure client
@@ -85,6 +86,8 @@ func (c *AzureClient) Reconcile(rt *route.Table, syncCh chan bool) {
 	}
 	c.azureSubnet = subnet
 
+	logrus.Infof("Found local subnet %s", subnet.Name)
+
 	for {
 
 		err := c.FetchRouteTable()
@@ -119,6 +122,7 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 	rtClient.Authorizer = c.Authorizer
 
 	routeTable := &network.RouteTablePropertiesFormat{
+
 		Routes: c.buildRoutes(rt),
 	}
 
@@ -127,6 +131,7 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 		c.ResourceGroup,
 		c.GenerateName(object),
 		network.RouteTable{
+			Location:                   c.location,
 			RouteTablePropertiesFormat: routeTable,
 		})
 
@@ -215,21 +220,22 @@ func (c *AzureClient) lookupSubnet() (network.Subnet, error) {
 	subnetClient := network.NewSubnetsClient(c.SubscriptionID)
 	subnetClient.Authorizer = c.Authorizer
 	for _, vnet := range vnets.Values() {
+		logrus.Infof("Found VNET: %s", *vnet.Name)
 		subnets, err := subnetClient.List(context.TODO(), c.ResourceGroup, *vnet.Name)
 		if err != nil {
 			logrus.Infof("Failed to list Subnets in vnet %s: %s", *vnet.Name, err)
 		}
 
 		for _, subnet := range subnets.Values() {
-			for _, prefix := range *subnet.AddressPrefixes {
-				_, ipv4Net, err := net.ParseCIDR(prefix)
-				if err != nil {
-					logrus.Infof("Failed to parse prefix %s: %s", prefix, err)
-				}
-				if ipv4Net.Contains(myIP) {
-					c.azureVnetName = vnet.Name
-					return subnet, nil
-				}
+			logrus.Infof("Found Subnet: %s", *subnet.Name)
+			_, ipv4Net, err := net.ParseCIDR(*subnet.AddressPrefix)
+			if err != nil {
+				logrus.Infof("Failed to parse prefix %s: %s", *subnet.AddressPrefix, err)
+			}
+			if ipv4Net.Contains(myIP) {
+				c.azureVnetName = vnet.Name
+				c.location = vnet.Location
+				return subnet, nil
 			}
 		}
 
