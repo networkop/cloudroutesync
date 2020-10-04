@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networkop/vcr/pkg/route"
+	"github.com/networkop/cloudrouter/pkg/route"
 	"github.com/sirupsen/logrus"
 )
 

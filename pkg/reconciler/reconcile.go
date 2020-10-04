@@ -1,11 +1,11 @@
 package reconciler
 
-import "github.com/networkop/vcr/pkg/route"
+import "github.com/networkop/cloudrouter/pkg/route"
 
 // CloudClient defines generic Cloud Client interface
 type CloudClient interface {
-	EnsureRouteTable() error
-	SyncRouteTable() error
+	FetchRouteTable() error
+	SyncRouteTable(*route.Table) error
 	AssociateSubnetTable() error
 	Reconcile(*route.Table, chan bool)
 }

@@ -2,14 +2,15 @@ package main
 
 import (
 	"flag"
-	"github.com/networkop/vcr/pkg/monitor"
-	"github.com/networkop/vcr/pkg/reconciler"
-	"github.com/networkop/vcr/pkg/route"
+
+	"github.com/networkop/cloudrouter/pkg/monitor"
+	"github.com/networkop/cloudrouter/pkg/reconciler"
+	"github.com/networkop/cloudrouter/pkg/route"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	cloud     = flag.String("cloud", "", "public cloud providers [azure|aws|gcp]")
+	cloud           = flag.String("cloud", "", "public cloud providers [azure|aws|gcp]")
 	supportedClouds = struct {
 		azure string
 	}{
@@ -17,32 +18,29 @@ var (
 	}
 )
 
-var 
-
 func main() {
 	logrus.Info("Starting Virtual Cloud Router")
 
 	flag.Parse()
 
-	var cloud reconciler.CloudClient
+	var client reconciler.CloudClient
 
-	switch cloud {
+	switch *cloud {
 	case supportedClouds.azure:
 		logrus.Info("Running on Azure")
-		cloud = reconciler.NewAzureClient()
+		client = reconciler.NewAzureClient()
 	default:
-		return fmt.Errorf("Unsupported cloud provider: %v", cloud)
+		logrus.Errorf("Unsupported cloud provider: %v", cloud)
+		return
 	}
 
 	syncCh := make(chan bool, 1)
-
-	errCh := make(chan error)
 
 	rt := route.New()
 
 	go monitor.Start(rt, syncCh)
 
-	go cloud.Reconcile(rt, syncCh)
+	go client.Reconcile(rt, syncCh)
 
 	select {}
 }
