@@ -114,6 +114,8 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 		Routes: c.buildRoutes(rt),
 	}
 
+	logrus.Infoln("Syncing Route Table")
+	rt.Print()
 	future, err := rtClient.CreateOrUpdate(
 		context.Background(),
 		c.ResourceGroup,
@@ -180,6 +182,7 @@ func (c *AzureClient) AssociateSubnetTable() error {
 	if props := c.azureSubnet.SubnetPropertiesFormat; props != nil {
 		if rt := props.RouteTable; rt != nil {
 			if rt.ID == c.azureRouteTable.ID {
+				logrus.Infoln("Route table is already associated, we're done.")
 				return nil
 			}
 		}
@@ -188,6 +191,7 @@ func (c *AzureClient) AssociateSubnetTable() error {
 		}
 	}
 
+	logrus.Infoln("Associating a route table with a subnet")
 	future, err := subnetClient.CreateOrUpdate(
 		context.Background(),
 		c.ResourceGroup,

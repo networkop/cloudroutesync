@@ -6,9 +6,9 @@ An add-on for cloud-hosted routers that periodically reads local routes via [rtn
 The main use cases are:
 
 * Self-managed Kuberentes clusters with BGP-based reachability (e.g. KubeRouter, Calico)
-* Multi/Hybrid cloud -- sync local route table with subnets configured in a different environment:
+* Multi/Hybrid cloud -- sync local route table with subnets configured in a different environment.
 
-> Note: The application relies on another routing daemon to program local netlink routes. This can be [FRR](http://docs.frrouting.org/en/latest/), [Quagga](https://www.nongnu.org/quagga/docs/quagga.html), [Bird](https://bird.network.cz/) or any other routing sofrware suite.
+> Note: The application relies on another routing daemon to program local netlink routes. This can be [FRR](http://docs.frrouting.org/en/latest/), [Quagga](https://www.nongnu.org/quagga/docs/quagga.html), [Bird](https://bird.network.cz/) or any other routing software suite.
 
 ## Currently Supported Clouds
 
