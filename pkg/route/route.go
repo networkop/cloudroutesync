@@ -51,18 +51,22 @@ func (rt *Table) Exists(route Route) bool {
 	return false
 }
 
-// Print pretty route table
-func (rt *Table) Print() {
+// String returns pretty route table
+func (rt *Table) String() string {
+	s := fmt.Sprint("---------\n")
 	for prefix, nh := range rt.Routes {
-		logrus.Println("---------")
-		logrus.Infof("%s -> %s\n", prefix, nh)
+		s += fmt.Sprintf("%s -> %s\n", prefix, nh)
 	}
+	s += fmt.Sprint("---------\n")
+	return s
 }
 
 // Update in-memory route table
 func (rt *Table) Update(currentRoutes map[string]net.IP) error {
 	if !reflect.DeepEqual(rt.Routes, currentRoutes) {
 		rt.Routes = currentRoutes
+		logrus.Infoln("Route change detected")
+		logrus.Debug(rt.String())
 		rt.SyncCh <- true
 	}
 	return nil

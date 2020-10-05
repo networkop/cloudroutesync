@@ -22,6 +22,7 @@ func Start(rt *route.Table, pollInterval int) {
 	defer conn.Close()
 
 	for {
+		logrus.Infof("Checking routing table")
 		msg, err := conn.Route.List()
 		if err != nil {
 			logrus.Errorf("Failed to list routes :%s", err)
@@ -32,7 +33,6 @@ func Start(rt *route.Table, pollInterval int) {
 		//updatedRT := setNextHopSelf(currentRT, rt.DefaultIntf, rt.DefaultIP)
 
 		rt.Update(currentRT)
-		rt.Print()
 
 		time.Sleep(time.Duration(pollInterval) * time.Second)
 	}

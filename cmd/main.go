@@ -15,6 +15,7 @@ var (
 	netlinkPollSec  = flag.Int("netlink", 10, "netlink polling interval in seconds")
 	cloudSyncSec    = flag.Int("sync", 10, "cloud routing table sync interval in seconds")
 	enableSync      = flag.Bool("event", false, "enable event-based sync (default is periodic, controlled by 'sync')")
+	debug           = flag.Bool("debug", false, "enable debug logging")
 	supportedClouds = struct {
 		azure string
 	}{
@@ -26,6 +27,10 @@ func Run() error {
 	logrus.Info("Starting Virtual Cloud Router")
 
 	flag.Parse()
+
+	if *debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
 
 	var client reconciler.CloudClient
 

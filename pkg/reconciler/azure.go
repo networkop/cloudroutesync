@@ -91,11 +91,16 @@ func (c *AzureClient) Reconcile(rt *route.Table, eventSync bool, syncInterval in
 		}
 	} else {
 		for {
-			err = c.SyncRouteTable(rt)
-			if err != nil {
-				logrus.Infof("Failed to sync route table: %s", err)
+			select {
+			case _ = <-rt.SyncCh:
+				logrus.Infof("Received sync signal in periodic mode, ignoring")
+			default:
+				err = c.SyncRouteTable(rt)
+				if err != nil {
+					logrus.Infof("Failed to sync route table: %s", err)
+				}
+				time.Sleep(time.Duration(syncInterval) * time.Second)
 			}
-			time.Sleep(time.Duration(syncInterval))
 		}
 	}
 }
@@ -174,7 +179,6 @@ OUTER:
 			continue
 		}
 		for _, subnet := range azureReservedRanges {
-			logrus.Infof("Checking subnet %s", subnet.String())
 			if subnet != nil && subnet.Contains(ip) {
 				continue OUTER
 			}
@@ -200,8 +204,8 @@ func (c *AzureClient) AssociateSubnetTable() error {
 
 	if props := c.azureSubnet.SubnetPropertiesFormat; props != nil {
 		if rt := props.RouteTable; rt != nil {
-			if rt.ID == c.azureRouteTable.ID {
-				logrus.Infoln("Route table is already associated, we're done.")
+			if *rt.ID == *c.azureRouteTable.ID {
+				logrus.Debug("Route table is already associated, we're done.")
 				return nil
 			}
 		}
