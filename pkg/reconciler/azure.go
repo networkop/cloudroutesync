@@ -16,28 +16,10 @@ import (
 )
 
 const (
-	defaultSub       = "1aebf65e-be71-4dac-8755-1a58f16dd74d"
-	defaultRG        = "example-resources"
-	defaultPrefix    = "michael-"
-	defaultInterface = "eth0"
+	defaultSub    = "1aebf65e-be71-4dac-8755-1a58f16dd74d"
+	defaultRG     = "example-resources"
+	defaultPrefix = "michael-"
 )
-
-//func newClient() *network.RouteTablesClient {
-//	sub := os.Getenv("AZURE_SUBSCRIPTION_ID")
-//	if sub == "" {
-//		sub = defaultSub
-//	}
-//	client := network.NewRouteTablesClient(sub)
-//
-//	authorizer, err := auth.NewAuthorizerFromEnvironment()
-//	if err != nil {
-//		logrus.Infof("Failed to init authorizer from environment %s", err)
-//	}
-//
-//	client.Authorizer = authorizer
-//
-//	return &client
-//}
 
 // AzureClient implements CloudClient interface
 type AzureClient struct {
@@ -78,37 +60,43 @@ func NewAzureClient() *AzureClient {
 	}
 }
 
-func (c *AzureClient) Reconcile(rt *route.Table, syncCh chan bool) {
+func (c *AzureClient) Reconcile(rt *route.Table, eventSync bool, syncInterval int) {
 
-	subnet, err := c.lookupSubnet()
+	subnet, err := c.lookupSubnet(rt.DefaultIP)
 	if err != nil {
 		logrus.Errorf("Failed to find a locally-connected subnet")
 	}
 	c.azureSubnet = subnet
 
-	logrus.Infof("Found local subnet %s", subnet.Name)
+	err = c.EnsureRouteTable()
+	if err != nil {
+		logrus.Infof("Failed to fetch route table: %s", err)
+	}
 
-	for {
-
-		err := c.FetchRouteTable()
-		if err != nil {
-			logrus.Infof("Failed to fetch route table: %s", err)
+	if eventSync {
+		for range rt.SyncCh {
+			err = c.SyncRouteTable(rt)
+			if err != nil {
+				logrus.Infof("Failed to sync route table: %s", err)
+			}
 		}
-
-		err = c.SyncRouteTable(rt)
-		if err != nil {
-			logrus.Infof("Failed to sync route table: %s", err)
+	} else {
+		for {
+			err = c.SyncRouteTable(rt)
+			if err != nil {
+				logrus.Infof("Failed to sync route table: %s", err)
+			}
+			time.Sleep(time.Duration(syncInterval))
 		}
-		time.Sleep(time.Second * 5)
 	}
 }
 
-func (c *AzureClient) FetchRouteTable() error {
+func (c *AzureClient) EnsureRouteTable() error {
 	object := "route-table"
 	rtClient := network.NewRouteTablesClient(c.SubscriptionID)
 	rtClient.Authorizer = c.Authorizer
 
-	_, err := rtClient.Get(context.TODO(), c.ResourceGroup, c.GenerateName(object), "")
+	_, err := rtClient.Get(context.Background(), c.ResourceGroup, c.GenerateName(object), "")
 	if err != nil {
 		c.SyncRouteTable(&route.Table{Routes: make(map[string]net.IP)})
 	}
@@ -127,7 +115,7 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 	}
 
 	future, err := rtClient.CreateOrUpdate(
-		context.TODO(),
+		context.Background(),
 		c.ResourceGroup,
 		c.GenerateName(object),
 		network.RouteTable{
@@ -135,14 +123,14 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 			RouteTablePropertiesFormat: routeTable,
 		})
 
-	err = future.WaitForCompletionRef(context.TODO(), rtClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), rtClient.Client)
 	if err != nil {
 		logrus.Infof("Failed to create a route table %s", err)
 		return nil
 	}
 
 	read, err := rtClient.Get(
-		context.TODO(),
+		context.Background(),
 		c.ResourceGroup,
 		c.GenerateName(object),
 		"",
@@ -160,6 +148,17 @@ func (c *AzureClient) buildRoutes(rt *route.Table) *[]network.Route {
 	results := []network.Route{}
 	object := "route"
 	for prefix, nextHop := range rt.Routes {
+
+		_, ipNet, err := net.ParseCIDR(*c.azureSubnet.AddressPrefix)
+		if err != nil {
+			logrus.Errorf("Failed to parse subnet %s: %+v", *c.azureSubnet.AddressPrefix, err)
+		}
+
+		// Setting nexthop self for all non-local routes
+		if !ipNet.Contains(nextHop) {
+			nextHop = rt.DefaultIP
+		}
+
 		route := network.Route{
 			Name: to.StringPtr(c.GenerateName(object)),
 			RoutePropertiesFormat: &network.RoutePropertiesFormat{
@@ -179,13 +178,18 @@ func (c *AzureClient) AssociateSubnetTable() error {
 	subnetClient.Authorizer = c.Authorizer
 
 	if props := c.azureSubnet.SubnetPropertiesFormat; props != nil {
+		if rt := props.RouteTable; rt != nil {
+			if rt.ID == c.azureRouteTable.ID {
+				return nil
+			}
+		}
 		props.RouteTable = &network.RouteTable{
 			ID: c.azureRouteTable.ID,
 		}
 	}
 
 	future, err := subnetClient.CreateOrUpdate(
-		context.TODO(),
+		context.Background(),
 		c.ResourceGroup,
 		*c.azureVnetName,
 		*c.azureSubnet.Name,
@@ -195,19 +199,14 @@ func (c *AzureClient) AssociateSubnetTable() error {
 		return fmt.Errorf("Error updating Route Table Association for Subnet %q : %+v", *c.azureSubnet.Name, err)
 	}
 
-	if err = future.WaitForCompletionRef(context.TODO(), subnetClient.Client); err != nil {
+	if err = future.WaitForCompletionRef(context.Background(), subnetClient.Client); err != nil {
 		return fmt.Errorf("Error waiting for completion of Route Table Association for Subnet %q : %+v", *c.azureSubnet.Name, err)
 	}
 
 	return nil
 }
 
-func (c *AzureClient) lookupSubnet() (network.Subnet, error) {
-
-	myIP, err := lookupIPs()
-	if err != nil {
-		logrus.Infof("Failed to lookup local IP on %s", defaultInterface)
-	}
+func (c *AzureClient) lookupSubnet(myIP net.IP) (network.Subnet, error) {
 
 	vnetClient := network.NewVirtualNetworksClient(c.SubscriptionID)
 	vnetClient.Authorizer = c.Authorizer
@@ -242,30 +241,4 @@ func (c *AzureClient) lookupSubnet() (network.Subnet, error) {
 	}
 
 	return network.Subnet{}, nil
-}
-
-func lookupIPs() (net.IP, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		logrus.Infof("Failed to list local interfaces")
-	}
-
-	for _, i := range ifaces {
-		if i.Name != defaultInterface {
-			continue
-		}
-		addrs, err := i.Addrs()
-		if err != nil {
-			logrus.Infof("Failed to list addresses on %s: %s", i.Name, err)
-		}
-		for _, addr := range addrs {
-			switch v := addr.(type) {
-			case *net.IPNet:
-				return v.IP, nil
-			case *net.IPAddr:
-				return v.IP, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("Could not determine local IP")
 }

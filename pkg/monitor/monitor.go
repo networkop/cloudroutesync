@@ -1,85 +1,60 @@
 package monitor
 
 import (
-	"bytes"
+	"fmt"
+	"log"
 	"net"
-	"os/exec"
-	"strings"
 	"time"
 
+	"github.com/jsimonetti/rtnetlink"
 	"github.com/networkop/cloudrouter/pkg/route"
 	"github.com/sirupsen/logrus"
-)
-
-var (
-	ipCmd     = "ip"
-	showRoute = []string{"route", "show", "table", "main"}
-	monRoute  = []string{"monitor", "route"}
+	"golang.org/x/sys/unix"
 )
 
 // Start monitoring local routing table
-func Start(rt *route.Table, syncCh chan bool) {
+func Start(rt *route.Table, pollInterval int) {
 
-	// Periodically check routing table
-	// TODO: replace with ip mon
-	go func() {
-		for {
-			currentRT, err := parseCurrent()
-			if err != nil {
-				logrus.Infof("Failed to parse current route table")
-			}
+	conn, err := rtnetlink.Dial(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
 
-			rt.Update(currentRT)
-
-			time.Sleep(time.Second * 2)
-			rt.Print()
+	for {
+		msg, err := conn.Route.List()
+		if err != nil {
+			logrus.Errorf("Failed to list routes :%s", err)
 		}
-	}()
+
+		currentRT := parseNetlinkRT(msg)
+
+		//updatedRT := setNextHopSelf(currentRT, rt.DefaultIntf, rt.DefaultIP)
+
+		rt.Update(currentRT)
+		rt.Print()
+
+		time.Sleep(time.Duration(pollInterval))
+	}
 
 }
 
-func parseCurrent() (map[string]net.IP, error) {
-	cmd := exec.Command(ipCmd, showRoute...)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		logrus.Infof("Failed to execute command %s", cmd)
+func parseNetlinkRT(routes []rtnetlink.RouteMessage) map[string]net.IP {
+	result := make(map[string]net.IP)
+
+	for _, r := range routes {
+		// Narrowing down to only the routes we _need_
+		if r.Table != unix.RT_TABLE_MAIN && r.Scope != unix.RT_SCOPE_UNIVERSE && r.Type != unix.RTN_UNICAST && r.Family != unix.AF_INET {
+			continue
+		}
+		attrs := r.Attributes
+
+		if attrs.Dst != nil && attrs.Gateway != nil {
+			prefix := fmt.Sprintf("%s/%d", attrs.Dst.String(), r.DstLength)
+			result[prefix] = attrs.Gateway
+		}
+
 	}
 
-	routes := make(map[string]net.IP)
-
-	for _, routeStr := range strings.Split(out.String(), "\n") {
-		//fmt.Println(routeStr)
-		if !strings.Contains(routeStr, "via") {
-			logrus.Debugf("Directly-connected route, skipping: %s", routeStr)
-			continue
-		}
-		parts := strings.Split(routeStr, " ")
-		prefixStr, nhStr := parts[0], parts[2]
-
-		// We don't want to inject default or
-		if prefixStr == "default" || strings.HasPrefix(prefixStr, "169") {
-			continue
-		}
-
-		_, prefix, err := net.ParseCIDR(prefixStr)
-		if err != nil {
-			hostRoute := net.ParseIP(prefixStr)
-			if hostRoute == nil {
-				logrus.Infof("Failed to parse prefix: %s", prefixStr)
-				continue
-			}
-			prefix = &net.IPNet{IP: hostRoute, Mask: net.CIDRMask(32, 32)}
-		}
-		nh := net.ParseIP(nhStr)
-		if nh == nil {
-			logrus.Infof("Failed to parse nexthop: %s", nhStr)
-			continue
-		}
-		//logrus.Infof("Adding route %s via %s", prefix.String(), nh.String())
-		routes[prefix.String()] = nh
-	}
-
-	return routes, nil
+	return result
 }

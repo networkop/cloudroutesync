@@ -11,6 +11,9 @@ import (
 
 var (
 	cloud           = flag.String("cloud", "", "public cloud providers [azure|aws|gcp]")
+	netlinkPollSec  = flag.Int("netlink", 10, "netlink polling interval in seconds")
+	cloudSyncSec    = flag.Int("sync", 10, "cloud routing table sync interval in seconds")
+	enableSync      = flag.Bool("push", false, "enable event-based sync (default is periodic, controlled by 'sync')")
 	supportedClouds = struct {
 		azure string
 	}{
@@ -31,16 +34,17 @@ func main() {
 		client = reconciler.NewAzureClient()
 	default:
 		logrus.Errorf("Unsupported cloud provider: %v", cloud)
+		flag.Usage()
 		return
 	}
 
-	syncCh := make(chan bool, 1)
+	syncCh := make(chan bool)
 
-	rt := route.New()
+	rt := route.New(syncCh)
 
-	go monitor.Start(rt, syncCh)
+	go monitor.Start(rt, *netlinkPollSec)
 
-	go client.Reconcile(rt, syncCh)
+	go client.Reconcile(rt, *enableSync, *cloudSyncSec)
 
 	select {}
 }

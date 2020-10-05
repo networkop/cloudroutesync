@@ -4,8 +4,8 @@ import "github.com/networkop/cloudrouter/pkg/route"
 
 // CloudClient defines generic Cloud Client interface
 type CloudClient interface {
-	FetchRouteTable() error
+	EnsureRouteTable() error
 	SyncRouteTable(*route.Table) error
 	AssociateSubnetTable() error
-	Reconcile(*route.Table, chan bool)
+	Reconcile(*route.Table, bool, int)
 }
