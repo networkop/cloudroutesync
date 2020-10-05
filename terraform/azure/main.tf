@@ -8,9 +8,9 @@ locals {
 #!/bin/bash
 wget https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.15.2.linux-amd64.tar.gz
-echo 'PATH=$PATH:/usr/local/go/bin' >> ~/.profile
+echo 'PATH=$PATH:/usr/local/go/bin' >> /home/example/.profile
 
-GOPATH=/home/example /usr/local/go/bin/go get -v github.com/networkop/cloudroutersync/cmd
+GOPATH=/home/example /usr/local/go/bin/go get -v github.com/networkop/cloudroutersync
 
 sudo apt-get update
 sudo apt-get install -y \

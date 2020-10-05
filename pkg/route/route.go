@@ -29,7 +29,7 @@ type Table struct {
 	DefaultIP   net.IP
 }
 
-var lookupCache map[string]*net.IPNet
+var lookupCache = make(map[string]*net.IPNet)
 
 // New returns new route table
 func New(syncCh chan bool) *Table {

@@ -124,7 +124,6 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 	}
 
 	logrus.Infoln("Syncing Route Table")
-	rt.Print()
 	future, err := rtClient.CreateOrUpdate(
 		context.Background(),
 		c.ResourceGroup,
@@ -158,6 +157,8 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 
 func (c *AzureClient) buildRoutes(rt *route.Table) *[]network.Route {
 	results := []network.Route{}
+
+OUTER:
 	for prefix, nextHop := range rt.Routes {
 
 		if mySubnet := route.ParseCIDR(*c.azureSubnet.AddressPrefix); mySubnet != nil {
@@ -173,8 +174,9 @@ func (c *AzureClient) buildRoutes(rt *route.Table) *[]network.Route {
 			continue
 		}
 		for _, subnet := range azureReservedRanges {
+			logrus.Infof("Checking subnet %s", subnet.String())
 			if subnet != nil && subnet.Contains(ip) {
-				continue
+				continue OUTER
 			}
 		}
 
