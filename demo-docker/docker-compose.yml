@@ -1,7 +1,8 @@
 version: '3.8'
 services:
   frr:
-    image: iwaseyusuke/frr
+    image: frrouting/frr:v
+    network_mode: host
     privileged: true
     volumes:
     - ./:/etc/frr/

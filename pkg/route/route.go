@@ -29,6 +29,8 @@ type Table struct {
 	DefaultIP   net.IP
 }
 
+var lookupCache map[string]*net.IPNet
+
 // New returns new route table
 func New(syncCh chan bool) *Table {
 	intf, ip, err := getDefaultIntf()
@@ -98,4 +100,13 @@ func getDefaultIntf() (string, net.IP, error) {
 		}
 	}
 	return "", nil, fmt.Errorf("No matching candidate interface found")
+}
+
+func ParseCIDR(cidr string) *net.IPNet {
+	if val, ok := lookupCache[cidr]; ok {
+		return val
+	}
+	_, result, _ := net.ParseCIDR(cidr)
+	lookupCache[cidr] = result
+	return lookupCache[cidr]
 }

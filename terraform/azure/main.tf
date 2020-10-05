@@ -10,7 +10,7 @@ wget https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.15.2.linux-amd64.tar.gz
 echo 'PATH=$PATH:/usr/local/go/bin' >> ~/.profile
 
-/usr/local/go/bin/go get -v github.com/networkop/cloudroutersync/cmd
+GOPATH=/home/example /usr/local/go/bin/go get -v github.com/networkop/cloudroutersync/cmd
 
 sudo apt-get update
 sudo apt-get install -y \
@@ -28,14 +28,15 @@ sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 sudo systemctl restart docker
 
-sudo docker pull frrouting/frr
+sudo docker pull frrouting/frr:v7.4.0
 sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
 
-wget https://github.com/networkop/cloudroutersync/demo-docker/bgpd.conf
-wget https://github.com/networkop/cloudroutersync/demo-docker/daemons
-wget https://github.com/networkop/cloudroutersync/demo-docker/docker-compose.yml
+wget https://raw.githubusercontent.com/networkop/cloudroutersync/main/demo-docker/bgpd.conf
+wget https://raw.githubusercontent.com/networkop/cloudroutersync/main/demo-docker/daemons
+wget https://raw.githubusercontent.com/networkop/cloudroutersync/main/demo-docker/docker-compose.yml
+
 
 CUSTOM_DATA
 }

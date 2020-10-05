@@ -34,7 +34,7 @@ func Start(rt *route.Table, pollInterval int) {
 		rt.Update(currentRT)
 		rt.Print()
 
-		time.Sleep(time.Duration(pollInterval))
+		time.Sleep(time.Duration(pollInterval) * time.Second)
 	}
 
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-06-01/network"
@@ -18,8 +19,16 @@ import (
 const (
 	defaultSub    = "1aebf65e-be71-4dac-8755-1a58f16dd74d"
 	defaultRG     = "example-resources"
-	defaultPrefix = "michael-"
+	defaultPrefix = "cloudroutersync-"
 )
+
+var azureReservedRanges = []*net.IPNet{
+	route.ParseCIDR("224.0.0.0/4"),
+	route.ParseCIDR("255.255.255.255/32"),
+	route.ParseCIDR("127.0.0.0/8"),
+	route.ParseCIDR("169.254.0.0/16"),
+	route.ParseCIDR("168.63.129.16/32"),
+}
 
 // AzureClient implements CloudClient interface
 type AzureClient struct {
@@ -121,6 +130,7 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 		c.ResourceGroup,
 		c.GenerateName(object),
 		network.RouteTable{
+			ID:                         c.azureRouteTable.ID,
 			Location:                   c.location,
 			RouteTablePropertiesFormat: routeTable,
 		})
@@ -148,21 +158,28 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 
 func (c *AzureClient) buildRoutes(rt *route.Table) *[]network.Route {
 	results := []network.Route{}
-	object := "route"
 	for prefix, nextHop := range rt.Routes {
 
-		_, ipNet, err := net.ParseCIDR(*c.azureSubnet.AddressPrefix)
-		if err != nil {
-			logrus.Errorf("Failed to parse subnet %s: %+v", *c.azureSubnet.AddressPrefix, err)
+		if mySubnet := route.ParseCIDR(*c.azureSubnet.AddressPrefix); mySubnet != nil {
+			// Setting nexthop self for all non-local routes
+			if !mySubnet.Contains(nextHop) {
+				nextHop = rt.DefaultIP
+			}
 		}
 
-		// Setting nexthop self for all non-local routes
-		if !ipNet.Contains(nextHop) {
-			nextHop = rt.DefaultIP
+		ip, _, err := net.ParseCIDR(prefix)
+		if err != nil {
+			logrus.Infof("Failed to parse prefix: %s", prefix)
+			continue
+		}
+		for _, subnet := range azureReservedRanges {
+			if subnet != nil && subnet.Contains(ip) {
+				continue
+			}
 		}
 
 		route := network.Route{
-			Name: to.StringPtr(c.GenerateName(object)),
+			Name: to.StringPtr(strings.Replace(prefix, "/", "_", 1)),
 			RoutePropertiesFormat: &network.RoutePropertiesFormat{
 				AddressPrefix:    to.StringPtr(prefix),
 				NextHopIPAddress: to.StringPtr(nextHop.String()),

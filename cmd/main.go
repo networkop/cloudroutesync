@@ -1,7 +1,8 @@
-package main
+package cmd
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/networkop/cloudroutersync/pkg/monitor"
 	"github.com/networkop/cloudroutersync/pkg/reconciler"
@@ -21,7 +22,7 @@ var (
 	}
 )
 
-func main() {
+func Run() error {
 	logrus.Info("Starting Virtual Cloud Router")
 
 	flag.Parse()
@@ -33,9 +34,8 @@ func main() {
 		logrus.Info("Running on Azure")
 		client = reconciler.NewAzureClient()
 	default:
-		logrus.Errorf("Unsupported cloud provider: %v", cloud)
 		flag.Usage()
-		return
+		return fmt.Errorf("Unsupported cloud provider: %v", cloud)
 	}
 
 	syncCh := make(chan bool)
