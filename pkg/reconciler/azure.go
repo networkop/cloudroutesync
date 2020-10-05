@@ -11,7 +11,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/networkop/cloudrouter/pkg/route"
+	"github.com/networkop/cloudroutersync/pkg/route"
 	"github.com/sirupsen/logrus"
 )
 

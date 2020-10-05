@@ -1,6 +1,6 @@
 package reconciler
 
-import "github.com/networkop/cloudrouter/pkg/route"
+import "github.com/networkop/cloudroutersync/pkg/route"
 
 // CloudClient defines generic Cloud Client interface
 type CloudClient interface {

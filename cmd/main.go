@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 
-	"github.com/networkop/cloudrouter/pkg/monitor"
-	"github.com/networkop/cloudrouter/pkg/reconciler"
-	"github.com/networkop/cloudrouter/pkg/route"
+	"github.com/networkop/cloudroutersync/pkg/monitor"
+	"github.com/networkop/cloudroutersync/pkg/reconciler"
+	"github.com/networkop/cloudroutersync/pkg/route"
 	"github.com/sirupsen/logrus"
 )
 
@@ -13,7 +13,7 @@ var (
 	cloud           = flag.String("cloud", "", "public cloud providers [azure|aws|gcp]")
 	netlinkPollSec  = flag.Int("netlink", 10, "netlink polling interval in seconds")
 	cloudSyncSec    = flag.Int("sync", 10, "cloud routing table sync interval in seconds")
-	enableSync      = flag.Bool("push", false, "enable event-based sync (default is periodic, controlled by 'sync')")
+	enableSync      = flag.Bool("event", false, "enable event-based sync (default is periodic, controlled by 'sync')")
 	supportedClouds = struct {
 		azure string
 	}{

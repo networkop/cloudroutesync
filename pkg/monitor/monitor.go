@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jsimonetti/rtnetlink"
-	"github.com/networkop/cloudrouter/pkg/route"
+	"github.com/networkop/cloudroutersync/pkg/route"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
