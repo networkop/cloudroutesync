@@ -1,9 +1,12 @@
 package main
 
-import "github.com/networkop/cloudroutesync/cmd"
+import (
+	"github.com/networkop/cloudroutesync/cmd"
+	"github.com/sirupsen/logrus"
+)
 
 func main() {
-	if err := cmd.Run(); err != nil {
-		panic(err)
-	}
+	logrus.Info("Starting Virtual Cloud Router")
+
+	logrus.Fatal(cmd.Run())
 }

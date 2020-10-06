@@ -24,7 +24,6 @@ var (
 )
 
 func Run() error {
-	logrus.Info("Starting Virtual Cloud Router")
 
 	flag.Parse()
 
@@ -40,7 +39,7 @@ func Run() error {
 		client = reconciler.NewAzureClient()
 	default:
 		flag.Usage()
-		return fmt.Errorf("Unsupported cloud provider: %v", cloud)
+		return fmt.Errorf("Unsupported/Undefined cloud provider: %v", *cloud)
 	}
 
 	syncCh := make(chan bool)

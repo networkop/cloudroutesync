@@ -33,9 +33,9 @@ sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-
 sudo chmod +x /usr/local/bin/docker-compose
 
 
-wget https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/bgpd.conf
-wget https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/daemons
-wget https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/docker-compose.yml
+sudo curl -L https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/bgpd.conf -o /home/example/bgpd.conf
+sudo curl -L  https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/daemons -o /home/example/daemons
+sudo curl -L  https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/docker-compose.yml -o /home/example/docker-compose.yml
 
 
 CUSTOM_DATA
