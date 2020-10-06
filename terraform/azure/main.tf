@@ -10,8 +10,6 @@ wget https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.15.2.linux-amd64.tar.gz
 echo 'PATH=$PATH:/usr/local/go/bin' >> /home/example/.profile
 
-GOPATH=/home/example /usr/local/go/bin/go get -v github.com/networkop/cloudroutesync
-
 sudo apt-get update
 sudo apt-get install -y \
     apt-transport-https \
@@ -29,6 +27,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 sudo systemctl restart docker
 
 sudo docker pull frrouting/frr:v7.4.0
+sudo docker pull networkop/cloudroutesync
 sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 

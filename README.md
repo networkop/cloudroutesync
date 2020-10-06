@@ -66,20 +66,30 @@ Using Azure as target environment.
 
 ```
 cd ./terraform/azure
-terraform init && terraform apply 
+terraform init && terraform apply -auto-approve
+
 ```
 
 3. SSH into both VMs and bring up the FRR routing daemon
 
 ```
-ssh example@VM-IP
-sudo docker-compose up -d
+router_ip=$(terraform output -json | jq -r '.public_address_router.value[0]')
+ssh example@$router_ip
+example@example-router-vm:~$ sudo CLOUD=azure docker-compose up -d
+```
+
+```
+vm_ip=$(terraform output -json | jq -r '.public_address_vm.value[0]')
+ssh example@$vm_ip
+example@example-vm:~$ sudo CLOUD=azure docker-compose up -d
 ```
 
 3. From a non-router VM and configure a BGP peering towards the cloud router
 
 ```
-router bgp 100
+example@example-vm:~$ sudo docker exec -it example_frr_1 vtysh
+conf
+router bgp 
 neighbor ROUTER-VM-PRIVATE-IP peer-group PEERS
 ```
 

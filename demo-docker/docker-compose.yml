@@ -6,3 +6,8 @@ services:
     privileged: true
     volumes:
     - ./:/etc/frr/
+  crs:
+    image: networkop/cloudroutesync
+    network_mode: host
+    privileged: true
+    command: ["-cloud", ${CLOUD}]
