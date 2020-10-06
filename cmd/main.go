@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/networkop/cloudroutersync/pkg/monitor"
-	"github.com/networkop/cloudroutersync/pkg/reconciler"
-	"github.com/networkop/cloudroutersync/pkg/route"
+	"github.com/networkop/cloudroutesync/pkg/monitor"
+	"github.com/networkop/cloudroutesync/pkg/reconciler"
+	"github.com/networkop/cloudroutesync/pkg/route"
 	"github.com/sirupsen/logrus"
 )
 

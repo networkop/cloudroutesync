@@ -12,14 +12,14 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/networkop/cloudroutersync/pkg/route"
+	"github.com/networkop/cloudroutesync/pkg/route"
 	"github.com/sirupsen/logrus"
 )
 
 const (
 	defaultSub    = "1aebf65e-be71-4dac-8755-1a58f16dd74d"
 	defaultRG     = "example-resources"
-	defaultPrefix = "cloudroutersync-"
+	defaultPrefix = "cloudroutesync-"
 )
 
 var azureReservedRanges = []*net.IPNet{
@@ -93,7 +93,7 @@ func (c *AzureClient) Reconcile(rt *route.Table, eventSync bool, syncInterval in
 		for {
 			select {
 			case _ = <-rt.SyncCh:
-				logrus.Infof("Received sync signal in periodic mode, ignoring")
+				logrus.Debug("Received sync signal in periodic mode, ignoring")
 			default:
 				err = c.SyncRouteTable(rt)
 				if err != nil {

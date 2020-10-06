@@ -1,4 +1,4 @@
-# CloudRouterSync
+# cloudroutesync
 An add-on for cloud-hosted routers that periodically reads local routes via [rtnetlink](https://man7.org/linux/man-pages/man7/rtnetlink.7.html) and synchronizes them with a cloud routing table.
 
 ![](./image.png)
@@ -32,13 +32,13 @@ See Terraform [directory](./terraform) for more examples.
 To build a binary:
 
 ```
-go get -v github.com/networkop/cloudroutersync
+go get -v github.com/networkop/cloudroutesync
 ```
 
 ## Usage
 
 ```
-Usage of ./cloudroutersync:
+Usage of ./cloudroutesync:
   -cloud string
     	public cloud providers [azure|aws|gcp]
   -event

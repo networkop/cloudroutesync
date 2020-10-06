@@ -1,4 +1,4 @@
-module github.com/networkop/cloudroutersync
+module github.com/networkop/cloudroutesync
 
 go 1.14
 

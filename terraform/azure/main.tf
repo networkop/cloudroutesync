@@ -10,7 +10,7 @@ wget https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.15.2.linux-amd64.tar.gz
 echo 'PATH=$PATH:/usr/local/go/bin' >> /home/example/.profile
 
-GOPATH=/home/example /usr/local/go/bin/go get -v github.com/networkop/cloudroutersync
+GOPATH=/home/example /usr/local/go/bin/go get -v github.com/networkop/cloudroutesync
 
 sudo apt-get update
 sudo apt-get install -y \
@@ -33,9 +33,9 @@ sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-
 sudo chmod +x /usr/local/bin/docker-compose
 
 
-wget https://raw.githubusercontent.com/networkop/cloudroutersync/main/demo-docker/bgpd.conf
-wget https://raw.githubusercontent.com/networkop/cloudroutersync/main/demo-docker/daemons
-wget https://raw.githubusercontent.com/networkop/cloudroutersync/main/demo-docker/docker-compose.yml
+wget https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/bgpd.conf
+wget https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/daemons
+wget https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/docker-compose.yml
 
 
 CUSTOM_DATA
