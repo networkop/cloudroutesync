@@ -36,6 +36,8 @@ To build a binary:
 go get -v github.com/networkop/cloudroutesync
 ```
 
+Alternatively, it is available as a docker image at `networkop/cloudroutesync`.
+
 ## Usage
 
 ```
@@ -60,7 +62,7 @@ It can run in two modes:
 
 ## Demo
 
-Using Azure as target environment.
+Using Azure as a hosting environment.
 
 1. Spin up a test environment with two VMs
 
@@ -70,7 +72,9 @@ terraform init && terraform apply -auto-approve
 
 ```
 
-3. SSH into both VMs and bring up the FRR routing daemon
+3. SSH into both VMs and bring up the demo application.
+
+Router VM will run both the FRR and the `cloudroutesync`:
 
 ```
 router_ip=$(terraform output -json | jq -r '.public_address_router.value[0]')
@@ -78,16 +82,18 @@ ssh example@$router_ip
 example@example-router-vm:~$ sudo CLOUD=azure docker-compose up -d
 ```
 
+Second, non-router VM will run only the FRR container:
+
 ```
 vm_ip=$(terraform output -json | jq -r '.public_address_vm.value[0]')
 ssh example@$vm_ip
-example@example-vm:~$ sudo CLOUD=azure docker-compose up -d
+example@example-vm:~$ sudo docker-compose up -d frr
 ```
 
 3. From a non-router VM and configure a BGP peering towards the cloud router
 
 ```
-example@example-vm:~$ sudo docker exec -it example_frr_1 vtysh
+example@example-vm:~$ sudo docker-compose exec frr vtysh
 conf
 router bgp 
 neighbor ROUTER-VM-PRIVATE-IP peer-group PEERS
@@ -110,10 +116,12 @@ redistribute connected
 ping ROUTER-VM-PRIVATE-IP -I 198.51.100.100
 ```
 
-6. From a router VM start the `cloudroutesync` app 
+6. From a router VM observe the logs of the `cloudroutesync` service:
 
 ```
-cloudroutesync -cloud azure 
+sudo docker-compose logs crs
+crs_1  | level=info msg="Route change detected"
+crs_1  | level=info msg="Syncing Route Table"
 ```
 
 7. Observe how route table gets populated with the new prefix.

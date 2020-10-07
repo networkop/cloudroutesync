@@ -10,4 +10,4 @@ services:
     image: networkop/cloudroutesync
     network_mode: host
     privileged: true
-    command: ["-cloud", ${CLOUD}]
+    command: ["-cloud", "${CLOUD}"]

@@ -77,14 +77,14 @@ func (c *AzureClient) Reconcile(rt *route.Table, eventSync bool, syncInterval in
 	}
 	c.azureSubnet = subnet
 
-	err = c.EnsureRouteTable()
+	err = c.ensureRouteTable()
 	if err != nil {
 		logrus.Infof("Failed to fetch route table: %s", err)
 	}
 
 	if eventSync {
 		for range rt.SyncCh {
-			err = c.SyncRouteTable(rt)
+			err = c.syncRouteTable(rt)
 			if err != nil {
 				logrus.Infof("Failed to sync route table: %s", err)
 			}
@@ -95,7 +95,7 @@ func (c *AzureClient) Reconcile(rt *route.Table, eventSync bool, syncInterval in
 			case _ = <-rt.SyncCh:
 				logrus.Debug("Received sync signal in periodic mode, ignoring")
 			default:
-				err = c.SyncRouteTable(rt)
+				err = c.syncRouteTable(rt)
 				if err != nil {
 					logrus.Infof("Failed to sync route table: %s", err)
 				}
@@ -105,20 +105,20 @@ func (c *AzureClient) Reconcile(rt *route.Table, eventSync bool, syncInterval in
 	}
 }
 
-func (c *AzureClient) EnsureRouteTable() error {
+func (c *AzureClient) ensureRouteTable() error {
 	object := "route-table"
 	rtClient := network.NewRouteTablesClient(c.SubscriptionID)
 	rtClient.Authorizer = c.Authorizer
 
 	_, err := rtClient.Get(context.Background(), c.ResourceGroup, c.GenerateName(object), "")
 	if err != nil {
-		c.SyncRouteTable(&route.Table{Routes: make(map[string]net.IP)})
+		c.syncRouteTable(&route.Table{Routes: make(map[string]net.IP)})
 	}
 
 	return nil
 }
 
-func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
+func (c *AzureClient) syncRouteTable(rt *route.Table) error {
 	object := "route-table"
 	rtClient := network.NewRouteTablesClient(c.SubscriptionID)
 	rtClient.Authorizer = c.Authorizer
@@ -157,7 +157,7 @@ func (c *AzureClient) SyncRouteTable(rt *route.Table) error {
 
 	c.azureRouteTable = read
 
-	return c.AssociateSubnetTable()
+	return c.associateSubnetTable()
 }
 
 func (c *AzureClient) buildRoutes(rt *route.Table) *[]network.Route {
@@ -198,7 +198,7 @@ OUTER:
 	return &results
 }
 
-func (c *AzureClient) AssociateSubnetTable() error {
+func (c *AzureClient) associateSubnetTable() error {
 	subnetClient := network.NewSubnetsClient(c.SubscriptionID)
 	subnetClient.Authorizer = c.Authorizer
 

@@ -1,4 +1,6 @@
-FROM busybox
+FROM alpine:latest
+
+RUN apk --update add ca-certificates
 
 WORKDIR /app
 ADD cloudroutesync cloudroutesync
