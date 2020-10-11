@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"reflect"
-	"sync"
 
 	"github.com/jsimonetti/rtnetlink"
 	"github.com/sirupsen/logrus"
@@ -22,9 +21,8 @@ type Route struct {
 
 // Table is a list of routes
 type Table struct {
-	Routes map[string]net.IP
-	SyncCh chan bool
-	sync.RWMutex
+	Routes      map[string]net.IP
+	SyncCh      chan bool
 	DefaultIntf string
 	DefaultIP   net.IP
 }

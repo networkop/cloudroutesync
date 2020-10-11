@@ -18,8 +18,12 @@ var (
 	debug           = flag.Bool("debug", false, "enable debug logging")
 	supportedClouds = struct {
 		azure string
+		aws   string
+		gcp   string
 	}{
 		azure: "azure",
+		aws:   "aws",
+		gcp:   "gcp",
 	}
 )
 
@@ -32,14 +36,24 @@ func Run() error {
 	}
 
 	var client reconciler.CloudClient
+	var err error
 
 	switch *cloud {
 	case supportedClouds.azure:
 		logrus.Info("Running on Azure")
-		client = reconciler.NewAzureClient()
+		client, err = reconciler.NewAzureClient()
+	case supportedClouds.aws:
+		logrus.Info("Running on AWS")
+		client, err = reconciler.NewAwsClient()
+	case supportedClouds.gcp:
+		logrus.Info("Running on GCP")
+		client, err = reconciler.NewGcpClient()
 	default:
 		flag.Usage()
 		return fmt.Errorf("Unsupported/Undefined cloud provider: %v", *cloud)
+	}
+	if err != nil {
+		fmt.Errorf("Failed to build API client: %s", err)
 	}
 
 	syncCh := make(chan bool)

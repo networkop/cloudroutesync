@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"time"
 
@@ -17,7 +16,7 @@ func Start(rt *route.Table, pollInterval int) {
 
 	conn, err := rtnetlink.Dial(nil)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 	defer conn.Close()
 
@@ -30,9 +29,11 @@ func Start(rt *route.Table, pollInterval int) {
 
 		currentRT := parseNetlinkRT(msg)
 
-		//updatedRT := setNextHopSelf(currentRT, rt.DefaultIntf, rt.DefaultIP)
+		logrus.Debugf("Current netlink route table :%+v", currentRT)
 
 		rt.Update(currentRT)
+
+		//log.Debugf("Current netlink route table :%+v", currentRT)
 
 		time.Sleep(time.Duration(pollInterval) * time.Second)
 	}

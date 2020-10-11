@@ -12,10 +12,12 @@ The main use cases are:
 
 ## Currently Supported Clouds
 
-* Azure
 * AWS (coming soon)
+* Azure
+* GCP*
 * Openstack (maybe)
 
+* Due to limitations of GCP's networking stack, the only supported mode is syncronizing of routes received from outside of the local subnet.
 
 ## Prerequisites
 
@@ -26,7 +28,11 @@ For example, in Azure this would require:
 * Enabled system identity.
 * Assigned "Network Contributor" role.
 
-See Terraform [directory](./terraform) for more examples.
+See Terraform [directory](./terraform) for examples for:
+
+* [AWS](./terraform/aws/main.tf)
+* [Azure](./terraform/azure/main.tf)
+* [GCP](./terraform/gcp/main.tf)
 
 ## Installation
 
@@ -62,12 +68,13 @@ It can run in two modes:
 
 ## Demo
 
-Using Azure as a hosting environment.
+Demonstration can be done using any of the providers from the terraform [directory](./terraform).
+Here we'll use AWS as an example.
 
 1. Spin up a test environment with two VMs
 
 ```
-cd ./terraform/azure
+cd ./terraform/aws
 terraform init && terraform apply -auto-approve
 
 ```
@@ -79,7 +86,7 @@ Router VM will run both the FRR and the `cloudroutesync`:
 ```
 router_ip=$(terraform output -json | jq -r '.public_address_router.value[0]')
 ssh example@$router_ip
-example@example-router-vm:~$ sudo CLOUD=azure docker-compose up -d
+example@example-router-vm:~$ sudo CLOUD=aws docker-compose up -d
 ```
 
 Second, non-router VM will run only the FRR container:

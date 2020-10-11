@@ -43,7 +43,8 @@ type AzureClient struct {
 }
 
 // NewAzureClient builds new Azure client
-func NewAzureClient() *AzureClient {
+func NewAzureClient() (*AzureClient, error) {
+
 	sub := os.Getenv("AZURE_SUBSCRIPTION_ID")
 	if sub == "" {
 		sub = defaultSub
@@ -56,7 +57,7 @@ func NewAzureClient() *AzureClient {
 
 	authorizer, err := auth.NewAuthorizerFromEnvironment()
 	if err != nil {
-		logrus.Infof("Failed to init authorizer from environment %s", err)
+		return nil, fmt.Errorf("Failed to init authorizer from environment %s", err)
 	}
 
 	return &AzureClient{
@@ -66,16 +67,16 @@ func NewAzureClient() *AzureClient {
 		GenerateName: func(objectType string) string {
 			return defaultPrefix + objectType
 		},
-	}
+	}, nil
 }
 
+// Reconcile implements reconciler interface
 func (c *AzureClient) Reconcile(rt *route.Table, eventSync bool, syncInterval int) {
 
-	subnet, err := c.lookupSubnet(rt.DefaultIP)
+	err := c.lookupSubnet(rt.DefaultIP)
 	if err != nil {
-		logrus.Errorf("Failed to find a locally-connected subnet")
+		logrus.Infof("Failed to lookupSubnet: %s", err)
 	}
-	c.azureSubnet = subnet
 
 	err = c.ensureRouteTable()
 	if err != nil {
@@ -141,8 +142,7 @@ func (c *AzureClient) syncRouteTable(rt *route.Table) error {
 
 	err = future.WaitForCompletionRef(context.Background(), rtClient.Client)
 	if err != nil {
-		logrus.Infof("Failed to create a route table %s", err)
-		return nil
+		return fmt.Errorf("Failed to create a route table %s", err)
 	}
 
 	read, err := rtClient.Get(
@@ -233,14 +233,14 @@ func (c *AzureClient) associateSubnetTable() error {
 	return nil
 }
 
-func (c *AzureClient) lookupSubnet(myIP net.IP) (network.Subnet, error) {
+func (c *AzureClient) lookupSubnet(myIP net.IP) error {
 
 	vnetClient := network.NewVirtualNetworksClient(c.SubscriptionID)
 	vnetClient.Authorizer = c.Authorizer
 
 	vnets, err := vnetClient.List(context.TODO(), c.ResourceGroup)
 	if err != nil {
-		logrus.Infof("Failed to list VNETs: %s", err)
+		return fmt.Errorf("Failed to list VNETs: %s", err)
 	}
 
 	subnetClient := network.NewSubnetsClient(c.SubscriptionID)
@@ -249,23 +249,24 @@ func (c *AzureClient) lookupSubnet(myIP net.IP) (network.Subnet, error) {
 		logrus.Infof("Found VNET: %s", *vnet.Name)
 		subnets, err := subnetClient.List(context.TODO(), c.ResourceGroup, *vnet.Name)
 		if err != nil {
-			logrus.Infof("Failed to list Subnets in vnet %s: %s", *vnet.Name, err)
+			return fmt.Errorf("Failed to list Subnets in vnet %s: %s", *vnet.Name, err)
 		}
 
 		for _, subnet := range subnets.Values() {
 			logrus.Infof("Found Subnet: %s", *subnet.Name)
 			_, ipv4Net, err := net.ParseCIDR(*subnet.AddressPrefix)
 			if err != nil {
-				logrus.Infof("Failed to parse prefix %s: %s", *subnet.AddressPrefix, err)
+				return fmt.Errorf("Failed to parse prefix %s: %s", *subnet.AddressPrefix, err)
 			}
 			if ipv4Net.Contains(myIP) {
 				c.azureVnetName = vnet.Name
 				c.location = vnet.Location
-				return subnet, nil
+				c.azureSubnet = subnet
+				return nil
 			}
 		}
 
 	}
 
-	return network.Subnet{}, nil
+	return fmt.Errorf("Could not find local subnet")
 }
