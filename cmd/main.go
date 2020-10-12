@@ -11,11 +11,13 @@ import (
 )
 
 var (
-	cloud           = flag.String("cloud", "", "public cloud providers [azure|aws|gcp]")
-	netlinkPollSec  = flag.Int("netlink", 10, "netlink polling interval in seconds")
-	cloudSyncSec    = flag.Int("sync", 10, "cloud routing table sync interval in seconds")
-	enableSync      = flag.Bool("event", false, "enable event-based sync (default is periodic, controlled by 'sync')")
-	debug           = flag.Bool("debug", false, "enable debug logging")
+	cloud          = flag.String("cloud", "", "public cloud providers [azure|aws|gcp]")
+	netlinkPollSec = flag.Int("netlink", 10, "netlink polling interval in seconds")
+	cloudSyncSec   = flag.Int("sync", 10, "cloud routing table sync interval in seconds")
+	enableSync     = flag.Bool("event", false, "enable event-based sync (default is periodic, controlled by 'sync')")
+	debug          = flag.Bool("debug", false, "enable debug logging")
+	cleanup        = flag.Bool("cleanup", false, "cleanup any created objects")
+
 	supportedClouds = struct {
 		azure string
 		aws   string
@@ -56,6 +58,12 @@ func Run() error {
 		fmt.Errorf("Failed to build API client: %s", err)
 	}
 
+	if *cleanup {
+		if err := client.Cleanup(); err != nil {
+			return err
+		}
+		return nil
+	}
 	syncCh := make(chan bool)
 
 	rt := route.New(syncCh)

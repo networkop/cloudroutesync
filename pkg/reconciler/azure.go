@@ -30,7 +30,7 @@ var azureReservedRanges = []*net.IPNet{
 	route.ParseCIDR("168.63.129.16/32"),
 }
 
-// AzureClient implements CloudClient interface
+// AzureClient stores cloud client and values
 type AzureClient struct {
 	ResourceGroup   string
 	SubscriptionID  string
@@ -68,6 +68,12 @@ func NewAzureClient() (*AzureClient, error) {
 			return defaultPrefix + objectType
 		},
 	}, nil
+}
+
+// Cleanup removes any leftover resources
+func (c *AzureClient) Cleanup() error {
+	logrus.Infof("Azure cleanup currently not implemented")
+	return nil
 }
 
 // Reconcile implements reconciler interface

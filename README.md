@@ -12,21 +12,26 @@ The main use cases are:
 
 ## Currently Supported Clouds
 
-* AWS (coming soon)
+* AWS
 * Azure
 * GCP*
 * Openstack (maybe)
 
-* Due to limitations of GCP's networking stack, the only supported mode is syncronizing of routes received from outside of the local subnet.
+> Due to limitations of GCP's networking stack, the only supported mode is syncronization of routes received from outside of the local subnet. These routes will be set with nextHop of the router VM running cloudroutesync.
 
 ## Prerequisites
 
 The application must be running on a cloud VM with enough IAM permissions to create/update cloud route table.
 
-For example, in Azure this would require:
+For example, in AWS this would require:
 
-* Enabled system identity.
-* Assigned "Network Contributor" role.
+* Create/Delete RouteTable
+* Associate/Deassociate RouteTables 
+* Create/Delete Routes
+* Create/Delete Tags
+* Describe NetworkInterfaces and Instances
+
+In addition to that, any VM that needs to send packets not natively known to the cloud SDN, need to have IP source check disabled.
 
 See Terraform [directory](./terraform) for examples for:
 

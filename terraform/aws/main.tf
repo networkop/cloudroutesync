@@ -114,7 +114,9 @@ resource "aws_iam_policy" "router_policy" {
           "ec2:DeleteRouteTable",
           "ec2:DescribeRouteTables",
           "ec2:DescribeInstances",
-          "ec2:DescribeNetworkInterfaces"
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:CreateTags",
+          "ec2:DeleteTags"
       ],
       "Resource": "*"
     }
@@ -153,5 +155,21 @@ resource "aws_instance" "router-vm" {
   user_data = local.custom_data
 
   iam_instance_profile        = aws_iam_instance_profile.routetable-profile.name
+}
+
+
+resource "aws_instance" "normal-vm" {
+  instance_type = "t2.micro"
+  ami = var.ubuntu_ami
+  
+  key_name = aws_key_pair.auth.id
+
+  associate_public_ip_address = true
+  source_dest_check = false 
+  vpc_security_group_ids = [aws_security_group.example.id]
+  subnet_id = aws_subnet.example.id
+
+  user_data = local.custom_data
+
 }
 

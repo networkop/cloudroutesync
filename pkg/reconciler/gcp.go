@@ -39,6 +39,7 @@ var (
 // The above means that cloudroutesync cannot install routes received from local subnet neighbors
 // The only supported mode is installing routes received from outside of the local subnet
 
+// GcpClient stores cloud client and values
 type GcpClient struct {
 	client     *compute.Service
 	projectID  string
@@ -90,19 +91,13 @@ func NewGcpClient() (*GcpClient, error) {
 	}, nil
 }
 
-func (c *GcpClient) fetchOwnedRoutes() ([]*compute.Route, error) {
-	routes, err := c.client.Routes.
-		List(c.projectID).
-		Filter(fmt.Sprintf("name:%s*", uniquePrefix)).
-		Do()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to list routes for GCP: %s", err)
-	}
-
-	// If too many routes (>500), this won't work
-	return routes.Items, nil
+// Cleanup removes any leftover resources
+func (c *GcpClient) Cleanup() error {
+	logrus.Infof("Azure cleanup currently not implemented")
+	return nil
 }
 
+// Reconcile implements reconciler interface
 func (c *GcpClient) Reconcile(rt *route.Table, eventSync bool, syncInterval int) {
 
 	err := c.lookupNetwork()
@@ -131,6 +126,19 @@ func (c *GcpClient) Reconcile(rt *route.Table, eventSync bool, syncInterval int)
 			}
 		}
 	}
+}
+
+func (c *GcpClient) fetchOwnedRoutes() ([]*compute.Route, error) {
+	routes, err := c.client.Routes.
+		List(c.projectID).
+		Filter(fmt.Sprintf("name:%s*", uniquePrefix)).
+		Do()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to list routes for GCP: %s", err)
+	}
+
+	// If too many routes (>500), this won't work
+	return routes.Items, nil
 }
 
 func buildRoutes(rt *route.Table, network string) (result []*compute.Route) {
