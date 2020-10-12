@@ -83,7 +83,7 @@ func (c *AwsClient) Cleanup() error {
 		return fmt.Errorf("Failed to read route table: %s", err)
 	}
 
-	logrus.Debugf("Disassociating route tableID: %s", myRouteTable.RouteTableId)
+	logrus.Debugf("Disassociating route tableID: %s", *myRouteTable.RouteTableId)
 	for _, assoc := range myRouteTable.Associations {
 		_, err := c.aws.DisassociateRouteTable(&ec2.DisassociateRouteTableInput{
 			AssociationId: assoc.RouteTableAssociationId,
@@ -323,7 +323,7 @@ func (c *AwsClient) syncRouteTable(rt *route.Table) error {
 				RouteTableId:         c.awsRouteTable.RouteTableId,
 			}
 
-			logrus.Debugf("Creating route %s in %s", *route.DestinationCidrBlock, *c.awsRouteTable.RouteTableId)
+			logrus.Infof("Creating route %s in %s", *route.DestinationCidrBlock, *c.awsRouteTable.RouteTableId)
 			_, err := c.aws.CreateRoute(input)
 			if err != nil {
 				opErrors = append(opErrors, fmt.Errorf("Failed to create route: %s", err))
@@ -342,7 +342,7 @@ func (c *AwsClient) syncRouteTable(rt *route.Table) error {
 				RouteTableId:         c.awsRouteTable.RouteTableId,
 			}
 
-			logrus.Debugf("Deleting route %s in %s", *route.DestinationCidrBlock, *c.awsRouteTable.RouteTableId)
+			logrus.Infof("Deleting route %s in %s", *route.DestinationCidrBlock, *c.awsRouteTable.RouteTableId)
 			_, err := c.aws.DeleteRoute(input)
 			if err != nil {
 				opErrors = append(opErrors, fmt.Errorf("Failed to create route: %s", err))
@@ -423,7 +423,7 @@ func (c *AwsClient) associateRouteTable() error {
 }
 
 func (c *AwsClient) nicIDFromIP(ip string) string {
-	logrus.Infof("Calculating nic ID from IP: %s", ip)
+	logrus.Debugf("Calculating nic ID from IP: %s", ip)
 
 	if id, ok := c.nicIPtoID[ip]; ok {
 		return id
@@ -448,7 +448,7 @@ func (c *AwsClient) nicIDFromIP(ip string) string {
 		logrus.Debugf("Checking nic %s", *nic.NetworkInterfaceId)
 
 		if *nic.PrivateIpAddress == ip {
-			logrus.Infof("Found a matching nic ID for IP %s", ip)
+			logrus.Debugf("Found a matching nic ID for IP %s", ip)
 			c.nicIPtoID[ip] = *nic.NetworkInterfaceId
 			return *nic.NetworkInterfaceId
 		}

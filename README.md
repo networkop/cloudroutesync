@@ -52,7 +52,9 @@ Alternatively, it is available as a docker image at `networkop/cloudroutesync`.
 ## Usage
 
 ```
-Usage of cloudroutesync:
+Usage of ./cloudroutesync:
+  -cleanup
+    	cleanup any created objects
   -cloud string
     	public cloud providers [azure|aws|gcp]
   -debug
@@ -73,7 +75,7 @@ It can run in two modes:
 
 ## Demo
 
-Demonstration can be done using any of the providers from the terraform [directory](./terraform).
+Demonstration can be done using any of the supported providers from the terraform [directory](./terraform).
 Here we'll use AWS as an example.
 
 1. Spin up a test environment with two VMs
@@ -90,25 +92,25 @@ Router VM will run both the FRR and the `cloudroutesync`:
 
 ```
 router_ip=$(terraform output -json | jq -r '.public_address_router.value[0]')
-ssh example@$router_ip
-example@example-router-vm:~$ sudo CLOUD=aws docker-compose up -d
+ssh ubuntu@$router_ip
+ubuntu@ip-10-0-1-31:~$ sudo CLOUD=aws docker-compose up -d
 ```
 
 Second, non-router VM will run only the FRR container:
 
 ```
 vm_ip=$(terraform output -json | jq -r '.public_address_vm.value[0]')
-ssh example@$vm_ip
-example@example-vm:~$ sudo docker-compose up -d frr
+ssh ubuntu@$vm_ip
+ubuntu@ip-10-0-1-195:~$ sudo docker-compose up -d frr
 ```
 
-3. From a non-router VM and configure a BGP peering towards the cloud router
+3. From a non-router VM and configure a BGP peering towards the cloud router (replace 10.0.1.31 with the private IP of the router VM)
 
 ```
-example@example-vm:~$ sudo docker-compose exec frr vtysh
+ubuntu@ip-10-0-1-195:~$ sudo docker-compose exec frr vtysh
 conf
 router bgp 
-neighbor ROUTER-VM-PRIVATE-IP peer-group PEERS
+neighbor 10.0.1.31 peer-group PEERS
 ```
 
 4. From the same VM configure a new loopback IP and redistribute it into BGP
@@ -122,20 +124,37 @@ redistribute connected
 ```
 
 
-5. From a non-router VM start a ping towards router VM sourced from the new interface
+5. From a non-router VM start a ping towards router VM sourced from the new interface (replace 10.0.1.31 with the private IP of the router VM)
 
 ```
-ping ROUTER-VM-PRIVATE-IP -I 198.51.100.100
+ubuntu@ip-10-0-1-195:~$ ping 10.0.1.31 -I 198.51.100.100
 ```
 
 6. From a router VM observe the logs of the `cloudroutesync` service:
 
 ```
-sudo docker-compose logs crs
-crs_1  | level=info msg="Route change detected"
-crs_1  | level=info msg="Syncing Route Table"
+ubuntu@ip-10-0-1-31:~$ sudo docker-compose logs crs
+crs_1  | time="2020-10-12T21:11:08Z" level=info msg="Starting Virtual Cloud Router"
+crs_1  | time="2020-10-12T21:11:08Z" level=info msg="Running on AWS"
+crs_1  | time="2020-10-12T21:11:08Z" level=info msg="Checking routing table"
+crs_1  | time="2020-10-12T21:11:19Z" level=info msg="Checking routing table"
+crs_1  | time="2020-10-12T21:11:29Z" level=info msg="Checking routing table"
+crs_1  | time="2020-10-12T21:11:39Z" level=info msg="Checking routing table"
+crs_1  | time="2020-10-12T21:11:39Z" level=info msg="Route change detected"
+crs_1  | time="2020-10-12T21:11:39Z" level=info msg="Creating route 198.51.100.100/32 in rtb-007864623346bee20"
+crs_1  | time="2020-10-12T21:11:49Z" level=info msg="Checking routing table"
 ```
 
 7. Observe how route table gets populated with the new prefix.
 
 The ping from step #5 should now receive responses.
+
+
+8. At the end of the test, to cleanup any leftover state like route tables and their association run:
+
+```
+cloudroutesync -cloud aws cleanup
+INFO[0000] Starting Virtual Cloud Router                
+INFO[0000] Running on AWS                               
+INFO[0000] Deleting own route table      
+```

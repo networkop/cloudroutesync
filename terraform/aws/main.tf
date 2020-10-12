@@ -8,7 +8,7 @@ locals {
 #!/bin/bash
 wget https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.15.2.linux-amd64.tar.gz
-echo 'PATH=$PATH:/usr/local/go/bin' >> /home/example/.profile
+echo 'PATH=$PATH:/usr/local/go/bin' >> /home/ubuntu/.profile
 
 sudo apt-get update
 sudo apt-get install -y \
@@ -31,9 +31,9 @@ sudo docker pull networkop/cloudroutesync
 sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
-sudo curl -L https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/bgpd.conf?token=AC7G2E5IQ4Y4YMTD7RB5ASC7QG3Y6 -o /home/example/bgpd.conf
-sudo curl -L https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/daemons?token=AC7G2E6ZA422TY2CEJUDFC27QG3YY -o /home/example/daemons
-sudo curl -L https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/docker-compose.yml?token=AC7G2EYTD3BE4ECL2TWYK6C7QG3ZG -o /home/example/docker-compose.yml
+sudo curl -L https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/bgpd.conf -o /home/ubuntu/bgpd.conf
+sudo curl -L https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/daemons -o /home/ubuntu/daemons
+sudo curl -L https://raw.githubusercontent.com/networkop/cloudroutesync/main/demo-docker/docker-compose.yml -o /home/ubuntu/docker-compose.yml
 
 CUSTOM_DATA
 }
@@ -62,10 +62,27 @@ resource "aws_security_group" "example" {
   name        = "${var.prefix}-sg"
   vpc_id      = aws_vpc.example.id
 
+  # SSH access from anywhere
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # BGP from local subnet
+  ingress {
+    from_port   = 179
+    to_port     = 179
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
+  }
+
+  # ICMP access from anywhere
+  ingress {
+    protocol    = "icmp"
+    from_port   = "-1"
+    to_port     = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
