@@ -41,12 +41,10 @@ var (
 
 // GcpClient stores cloud client and values
 type GcpClient struct {
-	client     *compute.Service
-	projectID  string
-	zone       string
-	network    string
-	internalIP string
-	instanceID string
+	client                          *compute.Service
+	projectID, zone, region         string
+	instanceID, network, internalIP string
+	subnet                          *net.IPNet
 }
 
 // NewGcpClient builds new GCP client
@@ -82,12 +80,15 @@ func NewGcpClient() (*GcpClient, error) {
 		return nil, fmt.Errorf("Failed to get instanceID from metadata: %s", err)
 	}
 
+	zoneParts := strings.Split(zone, "-")
+
 	return &GcpClient{
 		client:     client,
 		projectID:  project,
 		zone:       zone,
 		internalIP: internalIP,
 		instanceID: instanceID,
+		region:     strings.Join(zoneParts[0:len(zoneParts)-1], "-"),
 	}, nil
 }
 
@@ -141,13 +142,21 @@ func (c *GcpClient) fetchOwnedRoutes() ([]*compute.Route, error) {
 	return routes.Items, nil
 }
 
-func buildRoutes(rt *route.Table, network string) (result []*compute.Route) {
+// GCP does not support installation of nexthops from local subnet
+// This is due to the all interfaces having a /32 mask and linux kenel
+// requiring routes to be recursively resolved before installing them in the FIB
+func (c *GcpClient) buildRoutes(rt *route.Table) (result []*compute.Route) {
 	for prefix, nextHop := range rt.Routes {
+		// Skip nextHops that match local subnet
+		if c.subnet.Contains(nextHop) {
+			continue
+		}
+		// For all other cases set next-hop to self
 		result = append(result, &compute.Route{
-			Name:      uniquePrefix + "-" + prefixToName(prefix),
+			Name:      uniquePrefix + "-" + prefixToName(prefix) + prefixToName(nextHop.String()),
 			DestRange: prefix,
-			Network:   network,
-			NextHopIp: nextHop.String(),
+			Network:   c.network,
+			NextHopIp: c.privateIP,
 		})
 	}
 	return result
@@ -175,8 +184,10 @@ func (c *GcpClient) syncRouteTable(rt *route.Table) error {
 	if err != nil {
 		return fmt.Errorf("Failed to fetchOwnedRoutes: %s", err)
 	}
+	logrus.Debugf("Current routes: %+v", currentRoutes)
 
-	proposedRoutes := buildRoutes(rt, c.network)
+	proposedRoutes := c.buildRoutes(rt)
+	logrus.Debugf("Proposed routes: %+v", proposedRoutes)
 
 	logrus.Debug("Checking if any routes need deleting")
 	toDelete := []*compute.Route{}
@@ -199,7 +210,7 @@ func (c *GcpClient) syncRouteTable(rt *route.Table) error {
 	ops := []*compute.Operation{}
 
 	for _, delete := range toDelete {
-		logrus.Debugf("Attempting to delete route %s", delete.Name)
+		logrus.Infof("Attempting to delete route %s", delete.Name)
 		op, err := c.client.Routes.Delete(c.projectID, delete.Name).Do()
 		if err != nil {
 			logrus.Infof("Failed to initiate route delete %s", err)
@@ -209,7 +220,7 @@ func (c *GcpClient) syncRouteTable(rt *route.Table) error {
 	}
 
 	for _, add := range toAdd {
-		logrus.Debugf("Attempting to add route %s", add.Name)
+		logrus.Infof("Attempting to add route %s", add.Name)
 		op, err := c.client.Routes.Insert(c.projectID, add).Do()
 		if err != nil {
 			logrus.Infof("Failed to initiate route add %s", err)
@@ -242,7 +253,7 @@ func (c *GcpClient) waitForOps(ops []*compute.Operation) {
 	}
 
 	wg.Wait()
-	logrus.Debug("All ops completed")
+	logrus.Info("All ops completed")
 }
 
 func (c *GcpClient) waitForOp(op *compute.Operation) error {
@@ -281,17 +292,29 @@ func (c *GcpClient) waitForOp(op *compute.Operation) error {
 func (c *GcpClient) lookupNetwork() error {
 	logrus.Debugf("Looking up Local Network")
 
-	read, err := c.client.Instances.Get(c.projectID, c.zone, c.instanceID).Do()
+	instance, err := c.client.Instances.Get(c.projectID, c.zone, c.instanceID).Do()
 	if err != nil {
 		return fmt.Errorf("Failed to get local instance details")
 	}
 
-	for _, nic := range read.NetworkInterfaces {
+	for _, nic := range instance.NetworkInterfaces {
 		logrus.Debugf("Checking NIC %s ", nic.Name)
 
 		if c.internalIP == nic.NetworkIP {
 			logrus.Debug("Found a NIC matching internalIP")
+
+			subnet, err := c.client.Subnetworks.Get(c.projectID, c.region, nic.Subnetwork).Do()
+			if err != nil {
+				return fmt.Errorf("Failed to get local subnetwork")
+			}
+
+			_, ipNet, err := net.ParseCIDR(subnet.IpCidrRange)
+			if err != nil {
+				return fmt.Errorf("Failed to parse subnet CIDR: %s", subnet.IpCidrRange)
+			}
+
 			c.network = nic.Network
+			c.subnet = ipNet
 			return nil
 		}
 	}
